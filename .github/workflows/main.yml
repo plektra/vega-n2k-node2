@@ -1,0 +1,47 @@
+name: 'Build firmware'
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Meta
+      id: meta
+      run: |
+        echo ::set-output name=version::${GITHUB_REF#refs/tags/v}
+    - name: Cache pip
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Cache PlatformIO
+      uses: actions/cache@v2
+      with:
+        path: ~/.platformio
+        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
+    - name: Set up Python
+      uses: actions/setup-python@v2
+    - name: Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade platformio
+    - name: Run PlatformIO
+      run: pio run -e esp32dev
+    - name: Copy firmware image to S3 bucket
+      run: |
+        echo ${{ steps.meta.outputs.version }} > latest.txt
+        aws s3 cp .pio/build/esp32dev/firmware.bin s3://vega-ota/${{ github.event.repository.name }}/firmware-${{ steps.meta.outputs.version }}.bin --acl public-read
+        aws s3 cp latest.txt s3://vega-ota/${{ github.event.repository.name }}/latest.txt --acl public-read
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION: 'eu-north-1'
