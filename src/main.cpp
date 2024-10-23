@@ -97,7 +97,7 @@ void setup() {
   if(!success)
   {
     Serial.println("Connection error");
-    while(1);
+    //while(1);
   }
 
   // Configure INA226
@@ -136,6 +136,8 @@ void sendBatteryStatus(unsigned char instance) {
   double charge = 6.03 + -0.82 * voltage + 0.0244 * voltage * voltage;
   double capacityAh = 85.0 / (1.34 - 0.0285 * temperatureC + 0.000622 * temperatureC * temperatureC);
   double timeRemaining = (capacityAh * 3600 * charge) / current;
+
+  Serial.printf("U = %f V, I = %f A, T = %f °C\n", voltage, current, temperatureC);
 
   SetN2kDCBatStatus(n2kMsg1, instance, voltage, current, temperature);
   SetN2kDCStatus(n2kMsg2, 1, instance, N2kDCt_Battery, round(charge*100), 1, timeRemaining);
